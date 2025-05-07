@@ -19,7 +19,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 1rem 0 3.5rem 0;
+    padding: 1rem 0 4.5rem 0;
     position: relative;
   }
   header {
@@ -144,7 +144,8 @@
   }
   #uploader-form input[type="file"],
   #uploader-form input[type="text"],
-  #uploader-form textarea {
+  #uploader-form textarea,
+  #uploader-form input.title-input {
     width: 100%;
     padding: 0.5rem 0.8rem;
     border-radius: 10px;
@@ -157,14 +158,15 @@
   }
   #uploader-form input[type="file"]:focus,
   #uploader-form input[type="text"]:focus,
-  #uploader-form textarea:focus {
+  #uploader-form textarea:focus,
+  #uploader-form input.title-input:focus {
     border-color: #f5f6fa;
   }
   #uploader-form textarea {
     min-height: 70px;
     margin-top: 0.3rem;
   }
-  #uploader-form input[type="text"].title-input {
+  #uploader-form input.title-input {
     margin-top: 0.3rem;
   }
   #uploader-form button.upload-submit-btn {
@@ -201,6 +203,30 @@
   }
   #uploader-form button.close-btn:hover {
     color: #d1d8e0;
+  }
+  #export-import-container {
+    max-width: 350px;
+    width: 100%;
+    margin-bottom: 1rem;
+    text-align: center;
+    display: none;
+    gap: 0.5rem;
+  }
+  #export-import-container button {
+    background: #1e90ff;
+    border: none;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 25px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(30,144,255,0.7);
+    user-select: none;
+    transition: background 0.25s ease;
+  }
+  #export-import-container button:hover {
+    background: #2a7ce9;
   }
   #projects-container {
     width: 100%;
@@ -345,6 +371,12 @@
   </form>
 </section>
 
+<section id="export-import-container" aria-label="Export and import projects">
+  <button id="export-btn" aria-label="Export Projects">Export Projects</button>
+  <button id="import-btn" aria-label="Import Projects">Import Projects</button>
+  <input type="file" id="import-file" accept="application/json" style="display:none" aria-hidden="true" />
+</section>
+
 <section id="projects-container" aria-live="polite" aria-label="Project portfolio"></section>
 
 <script>
@@ -362,20 +394,21 @@
     const projectTitleInput = document.getElementById('project-title');
     const projectsContainer = document.getElementById('projects-container');
     const closeUploaderBtn = uploaderForm.querySelector('.close-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const importBtn = document.getElementById('import-btn');
+    const importFileInput = document.getElementById('import-file');
     const PASSWORD = '12345aedf';
     let isUploader = false;
 
     const STORAGE_KEY = 'portfolioProjects';
     let projects = [];
 
-    // Helper for date formatting
     function formatDate(dateStr) {
       const d = new Date(dateStr);
       if (isNaN(d)) return '';
       return d.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'});
     }
 
-    // Load projects from localStorage or empty
     function loadProjects() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -390,12 +423,10 @@
       projects = [];
     }
 
-    // Save projects
     function saveProjects() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     }
 
-    // Clear inputs after upload
     function clearInputs() {
       projectTitleInput.value = '';
       videoFileInput.value = '';
@@ -403,7 +434,6 @@
       projectDescriptionInput.value = '';
     }
 
-    // Extract YouTube ID
     function getYouTubeId(url) {
       try {
         const u = new URL(url);
@@ -418,7 +448,6 @@
       return null;
     }
 
-    // Render projects
     function renderProjects() {
       projectsContainer.innerHTML = '';
       if (projects.length === 0) {
@@ -434,13 +463,11 @@
         card.className = 'project-card';
         card.setAttribute('tabindex', '0');
 
-        // Title
         const titleEl = document.createElement('div');
         titleEl.className = 'project-title';
         titleEl.textContent = p.title || 'Untitled Project';
         card.appendChild(titleEl);
 
-        // Video container
         const videoContainer = document.createElement('div');
         videoContainer.className = 'video-container';
         if(p.type === 'file') {
@@ -460,16 +487,13 @@
         }
         card.appendChild(videoContainer);
 
-        // Project info container
         const info = document.createElement('div');
         info.className = 'project-info';
 
-        // Upload date
         const dateElem = document.createElement('small');
         dateElem.textContent = 'Uploaded: ' + formatDate(p.date);
         info.appendChild(dateElem);
 
-        // Description with Read More
         if(p.description && p.description.trim()) {
           const descElem = document.createElement('div');
           descElem.className = 'description collapsed';
@@ -505,7 +529,6 @@
           }
         }
 
-        // Delete button only in uploader mode
         if(isUploader) {
           const delBtn = document.createElement('button');
           delBtn.className = 'delete-btn';
@@ -524,7 +547,6 @@
       });
     }
 
-    // Delete project by id
     function deleteProject(id) {
       const index = projects.findIndex(p => p.id === id);
       if(index !== -1) {
@@ -537,14 +559,12 @@
       }
     }
 
-    // Add project
     function addProject(p) {
       projects.unshift(p);
       saveProjects();
       renderProjects();
     }
 
-    // Event listeners
     loginBtn.addEventListener('click', () => {
       if(passwordContainer.style.display === 'flex') {
         passwordContainer.style.display = 'none';
@@ -567,6 +587,7 @@
         loginError.style.display = 'none';
         loginBtn.style.display = 'none';
         uploaderForm.style.display = 'flex';
+        exportImportContainer.style.display = 'flex';
         passwordInput.value = '';
         renderProjects();
         alert('Uploader mode activated!');
@@ -639,6 +660,56 @@
         clearInputs();
       }
     });
+
+    exportBtn.addEventListener('click', () => {
+      if(projects.length === 0) {
+        alert('No projects to export.');
+        return;
+      }
+      const dataStr = JSON.stringify(projects, null, 2);
+      const blob = new Blob([dataStr], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portfolio-projects.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    });
+
+    importBtn.addEventListener('click', () => {
+      importFileInput.value = '';
+      importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if(!Array.isArray(data)) throw new Error('Invalid data format');
+          if(!confirm('Importing projects will overwrite your current projects. Continue?')) return;
+          // Revoke previous blobs if any
+          projects.forEach(p => {
+            if(p.type === 'file' && p.src) URL.revokeObjectURL(p.src);
+          });
+          projects = data;
+          saveProjects();
+          renderProjects();
+          alert('Projects imported successfully!');
+        } catch {
+          alert('Failed to import projects: invalid file.');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    const exportImportContainer = document.getElementById('export-import-container');
 
     loadProjects();
     renderProjects();
