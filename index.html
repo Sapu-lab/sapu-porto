@@ -150,7 +150,8 @@
     color: #f5f6fa;
   }
   #uploader-form input[type="file"],
-  #uploader-form input[type="text"] {
+  #uploader-form input[type="text"],
+  #uploader-form textarea {
     width: 100%;
     padding: 0.5rem 0.8rem;
     border-radius: 10px;
@@ -158,10 +159,17 @@
     font-size: 1rem;
     outline: none;
     border: 1.5px solid transparent;
+    resize: vertical;
+    font-family: 'Poppins', sans-serif;
   }
   #uploader-form input[type="file"]:focus,
-  #uploader-form input[type="text"]:focus {
+  #uploader-form input[type="text"]:focus,
+  #uploader-form textarea:focus {
     border-color: #f5f6fa;
+  }
+  #uploader-form textarea {
+    min-height: 70px;
+    margin-top: 0.3rem;
   }
   #uploader-form button.upload-submit-btn {
     margin-top: 1rem;
@@ -249,7 +257,7 @@
     border-radius: 15px 15px 0 0;
   }
   .project-info {
-    padding: 0.5rem 0.7rem 0.8rem 0.7rem;
+    padding: 0.5rem 0.7rem 0.3rem 0.7rem;
     width: 100%;
     text-align: center;
   }
@@ -258,7 +266,31 @@
     font-weight: 400;
     font-size: 0.8rem;
     opacity: 0.75;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.3rem;
+  }
+  .description {
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: #e6e9f0;
+    margin-bottom: 0.3rem;
+    white-space: pre-wrap;
+  }
+  .description.collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .read-more {
+    color: #ffffffcc;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.8rem;
+    user-select: none;
+  }
+  .read-more:hover {
+    color: #f0f6ff;
   }
   .project-info .delete-btn {
     background: #ff4757; /* red */
@@ -272,6 +304,7 @@
     box-shadow: 0 3px 7px rgba(255,71,87,0.5);
     user-select: none;
     transition: background 0.3s ease;
+    margin-top: 0.3rem;
   }
   .project-info .delete-btn:hover {
     background: #ff6b81;
@@ -307,6 +340,8 @@
     <input type="file" id="video-file" accept="video/mp4,video/webm,video/ogg" />
     <label for="youtube-url">Or paste YouTube video URL:</label>
     <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." />
+    <label for="project-description">Project Description:</label>
+    <textarea id="project-description" placeholder="Enter project description..." maxlength="300"></textarea>
     <button type="submit" class="upload-submit-btn" aria-label="Upload project">Upload project</button>
   </form>
 </section>
@@ -326,6 +361,7 @@
     const projectForm = document.getElementById('project-form');
     const videoFileInput = document.getElementById('video-file');
     const youtubeUrlInput = document.getElementById('youtube-url');
+    const projectDescriptionInput = document.getElementById('project-description');
     const projectsContainer = document.getElementById('projects-container');
     const closeUploaderBtn = uploaderForm.querySelector('.close-btn');
     const PASSWORD = '12345aedf';
@@ -334,12 +370,9 @@
     // Data persistence key
     const STORAGE_KEY = 'portfolioProjects';
 
-    // No default projects now
     const defaultProjects = [];
 
     let projects = [];
-
-    // Project structure: {id, type: 'file'|'youtube', src, date: ISO string}
 
     // Helper: format date localized short
     function formatDate(dateStr) {
@@ -360,7 +393,6 @@
           }
         } catch(e) {}
       }
-      // If no stored projects, load defaults (empty now)
       projects = defaultProjects.slice();
     }
 
@@ -373,6 +405,7 @@
     function clearInputs() {
       videoFileInput.value = '';
       youtubeUrlInput.value = '';
+      projectDescriptionInput.value = '';
     }
 
     // Extract YouTube video ID from URL
@@ -405,19 +438,17 @@
         const card = document.createElement('article');
         card.className = 'project-card';
         card.setAttribute('tabindex', '0');
-        // video container
+
         const videoContainer = document.createElement('div');
         videoContainer.className = 'video-container';
 
         if (project.type === 'file') {
-          // create <video> with src=blob url
           const videoEl = document.createElement('video');
           videoEl.controls = true;
           videoEl.src = project.src;
           videoEl.setAttribute('aria-label', 'Project video');
           videoContainer.appendChild(videoEl);
         } else if (project.type === 'youtube') {
-          // create iframe embed
           const iframe = document.createElement('iframe');
           iframe.src = `https://www.youtube.com/embed/${project.videoId}`;
           iframe.frameBorder = "0";
@@ -428,16 +459,48 @@
         }
         card.appendChild(videoContainer);
 
-        // project info container
         const info = document.createElement('div');
         info.className = 'project-info';
 
-        // upload date
         const dateElem = document.createElement('small');
         dateElem.textContent = 'Uploaded: ' + formatDate(project.date);
         info.appendChild(dateElem);
 
-        // delete button only if uploader mode (no default projects now so no need to filter)
+        if (project.description && project.description.trim() !== '') {
+          const descElem = document.createElement('div');
+          descElem.className = 'description collapsed';
+          descElem.textContent = project.description;
+          info.appendChild(descElem);
+
+          if (project.description.length > 100) {
+            const readMore = document.createElement('span');
+            readMore.className = 'read-more';
+            readMore.textContent = 'Lihat selengkapnya';
+            readMore.setAttribute('tabindex', '0');
+            readMore.setAttribute('role', 'button');
+            readMore.setAttribute('aria-expanded', 'false');
+            readMore.addEventListener('click', () => {
+              const expanded = readMore.getAttribute('aria-expanded') === 'true';
+              if (expanded) {
+                descElem.classList.add('collapsed');
+                readMore.textContent = 'Lihat selengkapnya';
+                readMore.setAttribute('aria-expanded', 'false');
+              } else {
+                descElem.classList.remove('collapsed');
+                readMore.textContent = 'Tutup';
+                readMore.setAttribute('aria-expanded', 'true');
+              }
+            });
+            readMore.addEventListener('keypress', (e) => {
+              if(e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                readMore.click();
+              }
+            });
+            info.appendChild(readMore);
+          }
+        }
+
         if (isUploader) {
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'delete-btn';
@@ -452,7 +515,6 @@
         }
 
         card.appendChild(info);
-
         projectsContainer.appendChild(card);
       });
     }
@@ -461,7 +523,6 @@
     function deleteProject(id) {
       const index = projects.findIndex(p => p.id === id);
       if (index !== -1) {
-        // revoke blob url if file type
         if (projects[index].type === 'file') {
           URL.revokeObjectURL(projects[index].src);
         }
@@ -473,12 +534,11 @@
 
     // Add project
     function addProject(project) {
-      projects.unshift(project); // newest first
+      projects.unshift(project);
       saveProjects();
       renderProjects();
     }
 
-    // Toggle password input visibility on button press
     loginBtn.addEventListener('click', () => {
       if (passwordContainer.style.display === 'flex') {
         passwordContainer.style.display = 'none';
@@ -487,20 +547,12 @@
         passwordContainer.setAttribute('aria-hidden', 'true');
       } else {
         passwordContainer.style.display = 'flex';
-        loginInputFocus();
+        setTimeout(() => passwordInput.focus(), 100);
         loginBtn.setAttribute('aria-expanded', 'true');
         passwordContainer.setAttribute('aria-hidden', 'false');
       }
     });
 
-    // Focus password input for accessibility
-    function loginInputFocus() {
-      setTimeout(() => {
-        passwordInput.focus();
-      }, 100);
-    }
-
-    // Password submit handler
     submitPasswordBtn.addEventListener('click', () => {
       const val = passwordInput.value.trim();
       if (val === PASSWORD) {
@@ -518,13 +570,11 @@
       }
     });
 
-    // Close uploader form button handler
     closeUploaderBtn.addEventListener('click', () => {
       uploaderForm.style.display = 'none';
     });
 
-    // Upload form submit
-    projectForm.addEventListener('submit', (e) => {
+    projectForm.addEventListener('submit', e => {
       e.preventDefault();
       if (!isUploader) {
         alert('You must be logged in as uploader to add projects!');
@@ -532,78 +582,53 @@
       }
       const file = videoFileInput.files[0];
       const url = youtubeUrlInput.value.trim();
+      const description = projectDescriptionInput.value.trim();
 
       if (!file && !url) {
         alert('Please select a local video file or enter a YouTube video URL.');
         return;
       }
-
       if (file && url) {
         alert('Please provide only one: either a local video file OR a YouTube video URL, not both.');
         return;
       }
 
-      // YouTube upload flow
       if (url) {
         const videoId = getYouTubeId(url);
         if (!videoId) {
           alert('Invalid YouTube URL. Please enter a valid URL.');
           return;
         }
-        const project = {
+        addProject({
           id: Date.now().toString() + Math.random().toString(16).slice(2),
           type: 'youtube',
-          videoId: videoId,
+          videoId,
           date: new Date().toISOString(),
-          src: null, // no src for youtube (use videoId)
-        };
-        addProject(project);
+          src: null,
+          description
+        });
         clearInputs();
-      }
-      // local file upload flow
-      else if (file) {
+      } else if (file) {
         const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
         if (!allowedTypes.includes(file.type)) {
           alert('Unsupported video format. Please upload mp4, webm, or ogg files.');
           return;
         }
         const objectUrl = URL.createObjectURL(file);
-        const project = {
+        addProject({
           id: Date.now().toString() + Math.random().toString(16).slice(2),
           type: 'file',
           src: objectUrl,
           date: new Date().toISOString(),
-        };
-        addProject(project);
+          description
+        });
         clearInputs();
       }
     });
 
-    // Initialization
-    function init() {
-      loadProjects();
-      renderProjects();
-    }
-
-    // Start
-    init();
-
+    loadProjects();
+    renderProjects();
   })();
 </script>
 </body>
 </html>
-</content>
-</create_file>
-
-<attempt_completion>
-✅ Removed the demo/Rick Astley and other example projects from the portfolio site.
-
-- Now the site shows "No projects uploaded yet." if no projects exist in localStorage.
-- Only projects you upload yourself as uploader will appear.
-- All previous functionality, design, and UX remain as requested.
-- The uploader form includes a close button for convenience.
-
-Open this updated `portfolio.html` in a modern browser to verify everything is as you want.
-
-If you want me to add default projects back or add other features, just ask!
-</attempt_completion>
